@@ -194,6 +194,97 @@ const xdr = await buildPaymentXDR({
 });
 ```
 
+### Fee and Memo Handling
+
+`useStellarPayment` sets the transaction fee to the SDK's `BASE_FEE`; it does not accept a custom fee. The optional `memo` is encoded as a Stellar text memo and must be at most 28 characters. This complete component builds the transaction, shows its fee in stroops, asks the supplied wallet signer to sign it, and submits the signed XDR:
+
+```tsx
+'use client';
+
+import { useState, type FormEvent } from 'react';
+import { Networks, TransactionBuilder } from '@stellar/stellar-sdk';
+import { useStellarPayment } from '@/hooks/useStellarPayment';
+
+export default function FeeAndMemoPayment({
+  sender,
+  signWithWallet,
+}: {
+  sender: string;
+  signWithWallet: (xdr: string) => Promise<string>;
+}) {
+  const { buildPaymentXDR, submitSignedXDR } = useStellarPayment({
+    network: 'TESTNET',
+  });
+  const [recipient, setRecipient] = useState('');
+  const [amount, setAmount] = useState('');
+  const [memo, setMemo] = useState('');
+  const [fee, setFee] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage('');
+
+    try {
+      const xdr = await buildPaymentXDR({
+        from: sender,
+        to: recipient,
+        amount,
+        asset: 'XLM',
+        memo: memo.trim() || undefined,
+      });
+      const transaction = TransactionBuilder.fromXDR(xdr, Networks.TESTNET);
+      setFee(transaction.fee);
+
+      const signedXdr = await signWithWallet(xdr);
+      const result = await submitSignedXDR(signedXdr);
+      if (!result.success) throw new Error(result.error ?? 'Payment failed');
+
+      setMessage(`Payment submitted: ${result.txHash}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Payment failed');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <label>
+        Recipient
+        <input
+          value={recipient}
+          onChange={(event) => setRecipient(event.target.value)}
+          required
+        />
+      </label>
+      <label>
+        Amount (XLM)
+        <input
+          type="number"
+          min="0.0000001"
+          step="0.0000001"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+          required
+        />
+      </label>
+      <label>
+        Memo (up to 28 characters)
+        <input
+          value={memo}
+          maxLength={28}
+          onChange={(event) => setMemo(event.target.value)}
+        />
+      </label>
+      <button type="submit">Build, sign, and submit</button>
+      {fee && <p>Transaction fee: {fee} stroops (SDK BASE_FEE)</p>}
+      {message && <p role="status">{message}</p>}
+    </form>
+  );
+}
+```
+
+Pass `signWithWallet` from your wallet integration; it must return the signed XDR for the supplied unsigned XDR. For other network settings, use the same network for `useStellarPayment` and `TransactionBuilder.fromXDR`.
+
 ### Multi-Step Payment Flow
 
 ```tsx

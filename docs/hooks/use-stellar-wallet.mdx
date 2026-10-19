@@ -365,23 +365,44 @@ For shared recovery patterns across hooks, see [Hook Error Handling](/docs/guide
 
 ### Connection Errors
 
+Use the hook's `connect()` method inside a component and render the caught error so both the rejected-connection and wallet-unavailable cases are visible to the user:
+
 ```tsx
-const handleConnect = async () => {
-  try {
-    await connect();
-  } catch (error) {
-    if (error.message.includes('User rejected')) {
-      // User cancelled the connection
-      console.log('Connection cancelled by user');
-    } else if (error.message.includes('not installed')) {
-      // Wallet extension not found
-      alert('Please install a Stellar wallet extension');
-    } else {
-      // Other errors
-      console.error('Connection failed:', error);
+'use client';
+
+import { useState } from 'react';
+import { useStellarWallet } from '@/hooks/useStellarWallet';
+
+export default function WalletConnectionWithErrors() {
+  const { connected, walletName, connect, disconnect } = useStellarWallet();
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleConnect = async () => {
+    setErrorMessage('');
+    try {
+      await connect();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to connect wallet.'
+      );
     }
-  }
-};
+  };
+
+  return (
+    <div>
+      {connected ? (
+        <button type="button" onClick={disconnect}>
+          Disconnect {walletName ? `(${walletName})` : 'wallet'}
+        </button>
+      ) : (
+        <button type="button" onClick={handleConnect}>
+          Connect wallet
+        </button>
+      )}
+      {errorMessage && <p role="alert">Connection failed: {errorMessage}</p>}
+    </div>
+  );
+}
 ```
 
 ### Payment Errors
@@ -513,7 +534,7 @@ await sendPayment({
 
 ## Related Hooks
 
-- [`useStellarPayment`](/docs/hooks/use-stellar-payment) - Advanced payment building and submission
+- [`useStellarPayment`](/docs/hooks/use-stellar-payment) - Advanced payment building and submission, including [fee and memo handling](/docs/hooks/use-stellar-payment#fee-and-memo-handling)
 - [`useStellarBalances`](/docs/hooks/use-stellar-balances) - Detailed balance tracking with real-time updates
 - [`useTransactionHistory`](/docs/hooks/use-transaction-history) - View account transaction history
 - [`useTrustlines`](/docs/hooks/use-trustlines#adding-and-removing-a-trustline) - Add and remove trustlines for the connected account
