@@ -111,6 +111,57 @@ If all 3 attempts fail:
 
 As soon as a later poll succeeds, `error` clears, `isRecovering` returns to `false`, and polling resumes at the normal `pollIntervalMs`.
 
+## Reconnect and Backoff
+
+This component keeps the latest events visible during a temporary RPC outage, announces recovery state, and offers a manual retry. Automatic retries wait 1, 3, then 9 seconds; after those attempts, the hook keeps polling at a slower interval until an RPC request succeeds.
+
+```tsx
+'use client';
+
+import { useSorobanEvents } from '@/hooks/useSorobanEvents';
+
+export default function RecoveringEventFeed({
+  contractId,
+}: {
+  contractId: string;
+}) {
+  const { events, loading, error, isRecovering, refresh, stopPolling } =
+    useSorobanEvents(contractId, { pollIntervalMs: 5000 });
+
+  return (
+    <section aria-label="Contract events">
+      <p aria-live="polite">
+        {isRecovering
+          ? 'Connection interrupted. Retrying with backoff.'
+          : loading
+            ? 'Checking for contract events...'
+            : 'Connected to the Soroban RPC.'}
+      </p>
+      {error && (
+        <div role="alert">
+          <p>Latest request failed: {error.message}</p>
+          <button type="button" onClick={refresh} disabled={loading}>
+            Retry now
+          </button>
+        </div>
+      )}
+      <ul>
+        {events.map((event) => (
+          <li key={event.id}>
+            {event.type} at ledger {event.ledger} (transaction {event.txHash})
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={stopPolling}>
+        Stop automatic polling
+      </button>
+    </section>
+  );
+}
+```
+
+`stopPolling()` cancels scheduled polling and retry timers without clearing fetched events. You can call `refresh()` later to retry and resume polling.
+
 ## RPC endpoint configuration
 
 `sorobanRpc` is **not hardcoded**. If you don't pass it explicitly, the hook reads it from the surrounding `WalletProvider`'s config (set at scaffold time via `--soroban-url` or `NEXT_PUBLIC_SOROBAN_URL`). The literal testnet URL in the table above is only the last-resort fallback when no provider config is present.
@@ -121,5 +172,5 @@ As soon as a later poll succeeds, `error` clears, `isRecovering` returns to `fal
 
 ## Related Hooks
 
-- [`useSorobanContract`](/docs/hooks/use-soroban-contract) - Call contract functions
+- [`useSorobanContract`](/docs/hooks/use-soroban-contract) - Call contract functions with [typed arguments and return decoding](/docs/hooks/use-soroban-contract#typed-arguments-and-return-decoding)
 - [Contracts Quick Start](/docs/getting-started/contracts-quick-start) - Scaffold, deploy, and invoke a Soroban contract end to end

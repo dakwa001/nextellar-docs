@@ -22,7 +22,7 @@ Configure your project during scaffolding:
 ```bash
 npx nextellar my-app \
   --horizon-url https://horizon.stellar.org \
-  --soroban-url https://soroban-rpc.stellar.org \
+  --soroban-url https://soroban.stellar.org \
   --wallets freighter,xbull \
   --package-manager pnpm
 ## Note: freighter,xbull is a custom wallet selection.
@@ -54,31 +54,31 @@ The CLI writes a `.nextellar/config.json` file inside every scaffolded project. 
 
 ```json
 {
-  "appName": "my-stellar-app",
-  "horizonUrl": "https://horizon-testnet.stellar.org",
-  "sorobanUrl": "https://soroban-testnet.stellar.org",
-  "network": "TESTNET",
-  "wallets": ["freighter", "albedo", "lobstr"],
+  "schemaVersion": 1,
   "nextellarVersion": "1.0.4",
-  "templateName": "default",
-  "timestamp": "2026-07-30T13:24:42.863Z"
+  "template": "default",
+  "createdAt": "2026-07-30T13:24:42.863Z"
 }
 ```
 
-### Field reference
+### Required schema fields
 
-| Field              | Type       | Description                                           |
-| ------------------ | ---------- | ----------------------------------------------------- |
-| `appName`          | `string`   | Project name passed to the CLI                        |
-| `horizonUrl`       | `string`   | Horizon endpoint used at scaffold time                |
-| `sorobanUrl`       | `string`   | Soroban RPC endpoint used at scaffold time            |
-| `network`          | `string`   | `"TESTNET"` or `"PUBLIC"`                             |
-| `wallets`          | `string[]` | Wallet adapter identifiers compiled into the project  |
-| `nextellarVersion` | `string`   | Semantic version of the CLI that created the project  |
-| `templateName`     | `string`   | Template name (`"default"`, `"defi"`, etc.)           |
-| `timestamp`        | `string`   | ISO 8601 timestamp of when the project was scaffolded |
+| Field              | Type     | Description                                                           |
+| ------------------ | -------- | --------------------------------------------------------------------- |
+| `schemaVersion`    | `number` | Current config schema version; currently `1`.                         |
+| `nextellarVersion` | `string` | Version of the CLI that created the project.                          |
+| `template`         | `string` | Selected template name, such as `default`, `minimal`, `defi`, `full`. |
+| `createdAt`        | `string` | ISO 8601 timestamp recorded when the project was scaffolded.          |
 
-> **Do not edit `.nextellar/config.json` by hand.** It is the source of truth for upgrade commands and re-scaffold operations. Modifying it may cause upgrade conflicts.
+These four fields are required by the current schema. Additional properties are allowed. When you run `nextellar init`, it adds or updates the following project settings:
+
+| Field        | Type       | Description                                        |
+| ------------ | ---------- | -------------------------------------------------- |
+| `horizonUrl` | `string`   | Horizon endpoint selected by `nextellar init`.     |
+| `sorobanUrl` | `string`   | Soroban RPC endpoint selected by `nextellar init`. |
+| `wallets`    | `string[]` | Wallet adapter IDs selected by `nextellar init`.   |
+
+The scaffold initially writes the four required fields above. `nextellar init` updates network and wallet settings while preserving the other config fields. Keep the file valid for schema version `1`; upgrade uses it to identify the project and its template.
 
 ## Post-scaffolding configuration
 
@@ -86,18 +86,18 @@ After creating your project, modify these generated files to change network, wal
 
 ### 1. Network configuration
 
-**File:** `src/lib/stellar-wallet-kit.ts`
+**File:** `src/lib/stellar-wallet-kit.ts` (TypeScript) or `src/lib/stellar-wallet-kit.js` (JavaScript)
 
 ```typescript
 // Change network endpoints
 export const HORIZON_URL = 'https://horizon.stellar.org';
-export const SOROBAN_URL = 'https://soroban-rpc.stellar.org';
+export const SOROBAN_URL = 'https://soroban.stellar.org';
 export const NETWORK = Networks.PUBLIC;
 ```
 
 ### 2. Wallet configuration
 
-**File:** `src/contexts/WalletProvider.tsx`
+**File:** `src/contexts/WalletProvider.tsx` (TypeScript) or `src/contexts/WalletProvider.jsx` (JavaScript)
 
 ```typescript
 // Add or remove wallet adapters
@@ -183,7 +183,7 @@ export const HORIZON_URL = 'https://horizon.stellar.org';
 2. **Update Soroban URL:**
 
 ```typescript
-export const SOROBAN_URL = 'https://soroban-rpc.stellar.org';
+export const SOROBAN_URL = 'https://soroban.stellar.org';
 ```
 
 3. **Update network passphrase:**
@@ -197,7 +197,7 @@ export const NETWORK = Networks.PUBLIC;
 
 ```bash
 NEXT_PUBLIC_HORIZON_URL=https://horizon.stellar.org
-NEXT_PUBLIC_SOROBAN_URL=https://soroban-rpc.stellar.org
+NEXT_PUBLIC_SOROBAN_URL=https://soroban.stellar.org
 NEXT_PUBLIC_NETWORK=PUBLIC
 ```
 
@@ -218,7 +218,7 @@ export function useNetwork() {
   const sorobanUrl =
     network === 'TESTNET'
       ? 'https://soroban-testnet.stellar.org'
-      : 'https://soroban-rpc.stellar.org';
+      : 'https://soroban.stellar.org';
 
   return { network, setNetwork, horizonUrl, sorobanUrl };
 }
@@ -294,7 +294,7 @@ export const NETWORKS = {
   },
   mainnet: {
     horizon: 'https://horizon.stellar.org',
-    soroban: 'https://soroban-rpc.stellar.org',
+    soroban: 'https://soroban.stellar.org',
     passphrase: Networks.PUBLIC,
   },
 } as const;

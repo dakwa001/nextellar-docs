@@ -111,6 +111,81 @@ With no public key, the hook returns an empty balance list, `loading: false`, an
 
 ## Examples
 
+### Loading and Empty States
+
+This component distinguishes an account that has not been selected, an initial fetch, an error before any data is available, an empty or unfunded account, and a successful balance list. If a refresh fails after balances were loaded, it keeps those balances visible and shows the error alongside them.
+
+```tsx
+'use client';
+
+import { useStellarBalances } from '@/hooks/useStellarBalances';
+
+export default function BalanceStates({
+  publicKey,
+}: {
+  publicKey?: string | null;
+}) {
+  const { balances, loading, error, refresh } = useStellarBalances(publicKey);
+
+  if (!publicKey) {
+    return <p>Connect a wallet to view account balances.</p>;
+  }
+
+  if (loading && balances.length === 0) {
+    return <p role="status">Loading account balances...</p>;
+  }
+
+  if (error && balances.length === 0) {
+    return (
+      <div>
+        <p role="alert">Could not load balances: {error.message}</p>
+        <button type="button" onClick={refresh} disabled={loading}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (balances.length === 0) {
+    return (
+      <div>
+        <p>
+          No balances found. This account may be unfunded or have no trustlines.
+        </p>
+        {error && <p role="status">Refresh failed: {error.message}</p>}
+        <button type="button" onClick={refresh} disabled={loading}>
+          Refresh
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <section>
+      <h2>Account balances</h2>
+      {error && (
+        <p role="status">
+          Showing the last loaded balances. Refresh failed: {error.message}
+        </p>
+      )}
+      <ul>
+        {balances.map((balance) => (
+          <li
+            key={`${balance.asset_type}-${balance.asset_code ?? 'XLM'}-${balance.asset_issuer ?? ''}`}
+          >
+            {balance.asset_type === 'native' ? 'XLM' : balance.asset_code}:{' '}
+            {balance.balance}
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={refresh} disabled={loading}>
+        {loading ? 'Refreshing...' : 'Refresh balances'}
+      </button>
+    </section>
+  );
+}
+```
+
 ### With Auto-Refresh (Polling)
 
 ```tsx
@@ -308,6 +383,6 @@ const { error } = useStellarBalances('INVALID-KEY');
 
 ## Related Hooks
 
-- [`useStellarWallet`](/docs/hooks/use-stellar-wallet) - Wallet connection with balances
+- [`useStellarWallet`](/docs/hooks/use-stellar-wallet) - Wallet connection with balances and [loading/empty-state handling](/docs/hooks/use-stellar-balances#loading-and-empty-states)
 - [`useTrustlines`](/docs/hooks/use-trustlines) - Manage asset trustlines ([adding and removing a trustline](/docs/hooks/use-trustlines#adding-and-removing-a-trustline) example)
 - [`WalletProvider`](/docs/hooks/wallet-provider) - Global configuration

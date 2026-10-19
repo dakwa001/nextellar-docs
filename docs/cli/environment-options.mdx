@@ -12,20 +12,22 @@ This page is the single source of truth for environment variables used by **Next
 
 ## Quick reference
 
-| Variable                              | Group        | Default (testnet scaffold)            | Required |
-| ------------------------------------- | ------------ | ------------------------------------- | -------- |
-| `NEXT_PUBLIC_HORIZON_URL`             | Network      | `https://horizon-testnet.stellar.org` | Yes      |
-| `NEXT_PUBLIC_SOROBAN_URL`             | Network      | `https://soroban-testnet.stellar.org` | Yes      |
-| `NEXT_PUBLIC_NETWORK`                 | Network      | `TESTNET`                             | Yes      |
-| `NEXT_PUBLIC_APP_NAME`                | App metadata | Project name                          | Yes      |
-| `NEXT_PUBLIC_WALLETS`                 | Wallets      | _(commented out)_                     | No       |
-| `NEXT_PUBLIC_CONTRACT_ID`             | Contracts    | _(commented out)_                     | No       |
-| `NEXT_PUBLIC_HELLO_WORLD_CONTRACT_ID` | Contracts    | _(appended with `--with-contracts`)_  | No       |
-| `NEXTELLAR_TELEMETRY_DISABLED`        | CLI          | unset (telemetry off by default)      | No       |
-| `NEXTELLAR_TELEMETRY_ENDPOINT`        | CLI          | `https://nextellar.dev/api/telemetry` | No       |
-| `npm_config_user_agent`               | CLI / Node   | Set by the active package manager     | No       |
-| `NODE_ENV`                            | CLI / Node   | `development`                         | No       |
-| `CI`                                  | CLI / Node   | unset                                 | No       |
+| Variable                                  | Scope / availability                                   | Default or behavior                             |
+| ----------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- |
+| `NEXT_PUBLIC_HORIZON_URL`                 | All scaffold templates                                 | Testnet Horizon URL                             |
+| `NEXT_PUBLIC_SOROBAN_URL`                 | All scaffold templates                                 | Testnet Soroban RPC URL                         |
+| `NEXT_PUBLIC_NETWORK`                     | All scaffold templates                                 | `TESTNET`                                       |
+| `NEXT_PUBLIC_APP_NAME`                    | All scaffold templates                                 | Project name                                    |
+| `NEXT_PUBLIC_WALLETS`                     | Commented `.env.example` hint, not read at runtime     | Wallet list is injected by the `--wallets` flag |
+| `NEXT_PUBLIC_CONTRACT_ID`                 | Optional contract ID slot in the template `.env` files | Unset                                           |
+| `NEXT_PUBLIC_HELLO_WORLD_CONTRACT_ID`     | Added by `--with-contracts`                            | Contract ID placeholder                         |
+| `NEXT_PUBLIC_COUNTER_CONTRACT_ID`         | Optional after deploying the contracts overlay         | Unset                                           |
+| `NEXT_PUBLIC_WALLETCONNECT_*`             | Default-based templates when WalletConnect is enabled  | See WalletConnect variables below               |
+| `NEXTELLAR_TELEMETRY_DISABLED`            | CLI                                                    | Unset; telemetry is opt-in                      |
+| `NEXTELLAR_TELEMETRY_ENDPOINT`            | CLI                                                    | `https://nextellar.dev/api/telemetry`           |
+| `NEXTELLAR_NO_UPDATE_NOTIFIER`            | CLI                                                    | Unset; set to suppress the update notice        |
+| `NEXTELLAR_HOME_OVERRIDE`                 | CLI update-check cache                                 | Uses the user's home directory                  |
+| `npm_config_user_agent`, `CI`, `NODE_ENV` | CLI / Node standard variables                          | Set by Node, CI, or the active package manager  |
 
 ---
 
@@ -37,7 +39,7 @@ Next.js exposes any variable prefixed `NEXT_PUBLIC_` to browser code. Copy `.env
 
 #### `NEXT_PUBLIC_HORIZON_URL`
 
-**Source:** `src/templates/*/. env.example` — `{{HORIZON_URL}}` placeholder
+**Source:** `src/templates/*/.env.example` — `{{HORIZON_URL}}` placeholder
 
 **Effect:** Sets the Horizon REST API base URL used for account queries, payments, and transaction history.
 
@@ -53,14 +55,14 @@ const horizonUrl = process.env.NEXT_PUBLIC_HORIZON_URL;
 
 #### `NEXT_PUBLIC_SOROBAN_URL`
 
-**Source:** `src/templates/*/. env.example` — `{{SOROBAN_URL}}` placeholder
+**Source:** `src/templates/*/.env.example` — `{{SOROBAN_URL}}` placeholder
 
 **Effect:** Sets the Soroban RPC endpoint for smart contract reads, invocations, and event subscriptions.
 
 |                        |                                                   |
 | ---------------------- | ------------------------------------------------- |
 | **Default (scaffold)** | `https://soroban-testnet.stellar.org`             |
-| **Production value**   | `https://soroban-rpc.stellar.org`                 |
+| **Production value**   | `https://soroban.stellar.org`                     |
 | **Valid values**       | Full Soroban RPC URL with `http://` or `https://` |
 
 ```typescript
@@ -71,7 +73,7 @@ const sorobanUrl = process.env.NEXT_PUBLIC_SOROBAN_URL;
 
 #### `NEXT_PUBLIC_NETWORK`
 
-**Source:** `src/templates/*/. env.example` — `{{NETWORK}}` placeholder
+**Source:** `src/templates/*/.env.example` — `{{NETWORK}}` placeholder
 
 **Effect:** Declares which Stellar network the app targets. Hooks and wallet adapters use this to select passphrases and validate transactions.
 
@@ -87,7 +89,7 @@ Switching networks requires updating both `NEXT_PUBLIC_HORIZON_URL` and `NEXT_PU
 
 #### `NEXT_PUBLIC_APP_NAME`
 
-**Source:** `src/templates/*/. env.example` — `{{APP_NAME}}` placeholder
+**Source:** `src/templates/*/.env.example` — `{{APP_NAME}}` placeholder
 
 **Effect:** Exposes the application name to client-side code. Used in page titles, SEO metadata, and UI components.
 
@@ -104,20 +106,26 @@ const appName = process.env.NEXT_PUBLIC_APP_NAME;
 
 #### `NEXT_PUBLIC_WALLETS`
 
-**Source:** `src/templates/*/. env.example` (commented out by default)
-
-**Effect:** Overrides the compiled-in wallet list at runtime. Accepts a comma-separated list of wallet adapter identifiers.
-
-|                  |                                                   |
-| ---------------- | ------------------------------------------------- |
-| **Default**      | Compiled into `stellar-wallet-kit.ts` at scaffold |
-| **Valid values** | `freighter`, `albedo`, `lobstr`, `xbull`, `hana`  |
-
-This variable is commented out in `.env.example`. Uncomment it only if you need runtime wallet selection independent of the compiled list.
+The `.env.example` files include a commented `NEXT_PUBLIC_WALLETS` hint, but the templates do not read this variable at runtime. Choose the wallet adapter list when scaffolding with `--wallets`; the CLI injects that list into the generated wallet-kit source.
 
 ```bash
-## .env.local
-NEXT_PUBLIC_WALLETS=freighter,albedo,lobstr
+npx nextellar my-app --wallets freighter,xbull
+```
+
+## WalletConnect variables
+
+The default template (and templates composed from it) supports WalletConnect when `walletconnect` is included in the scaffold's `--wallets` list. These optional variables are documented in the default template's `.env.example`; they are not common to the minimal or DeFi template variants.
+
+| Variable                               | Description                                                    |
+| -------------------------------------- | -------------------------------------------------------------- |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | Reown project ID; required to enable the WalletConnect module. |
+| `NEXT_PUBLIC_WALLETCONNECT_APP_URL`    | Public URL of the dApp; optional.                              |
+| `NEXT_PUBLIC_WALLETCONNECT_ICON`       | Public icon URL; optional.                                     |
+
+```bash
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-32-character-project-id
+NEXT_PUBLIC_WALLETCONNECT_APP_URL=https://your-dapp.example
+NEXT_PUBLIC_WALLETCONNECT_ICON=https://your-dapp.example/icon.png
 ```
 
 ## Contract IDs
@@ -147,6 +155,14 @@ NEXT_PUBLIC_WALLETS=freighter,albedo,lobstr
 ```bash
 ## .env.local  (only present with --with-contracts)
 NEXT_PUBLIC_HELLO_WORLD_CONTRACT_ID=CABC...XYZ
+```
+
+#### `NEXT_PUBLIC_COUNTER_CONTRACT_ID`
+
+The contracts overlay can also read this optional value for its Counter example. Add it to `.env.local` after deploying that contract; the scaffold does not append this variable automatically.
+
+```bash
+NEXT_PUBLIC_COUNTER_CONTRACT_ID=CABC...XYZ
 ```
 
 ---
@@ -191,6 +207,22 @@ You can also pass `--no-telemetry` as a flag instead.
 NEXTELLAR_TELEMETRY_ENDPOINT=https://my-analytics.example.com/ingest npx nextellar my-app
 ```
 
+### `NEXTELLAR_NO_UPDATE_NOTIFIER`
+
+**Effect:** Suppresses the CLI's optional update-available notice. Set it to a non-empty value to skip the check and notice.
+
+```bash
+NEXTELLAR_NO_UPDATE_NOTIFIER=1 npx nextellar my-app
+```
+
+### `NEXTELLAR_HOME_OVERRIDE`
+
+**Effect:** Changes the base directory used for the CLI's update-check cache (`.nextellar/update-check.json`). It does not relocate the user's telemetry configuration.
+
+```bash
+NEXTELLAR_HOME_OVERRIDE=/tmp/nextellar-home npx nextellar my-app
+```
+
 ---
 
 ## CLI and Node environment variables
@@ -232,28 +264,30 @@ These standard variables are read by the CLI or by the underlying Node.js runtim
 
 ---
 
-## Complete `.env.example` reference
+## `.env.example` entries
 
-The following is the verbatim `.env.example` written into every scaffolded project (all templates). Placeholders in `{{DOUBLE_BRACES}}` are replaced at scaffold time.
+All six language/template variants include the four common settings below. Optional comments and WalletConnect settings vary by template. The CLI replaces the placeholders when scaffolding.
 
 ```bash
-## Nextellar — Environment Variables
-## Copy this file to .env.local and fill in your values
+# Nextellar environment variables
+# Copy this file to .env.local and fill in your values
 
-## Stellar Network Configuration
+# Stellar network configuration
 NEXT_PUBLIC_HORIZON_URL={{HORIZON_URL}}
 NEXT_PUBLIC_SOROBAN_URL={{SOROBAN_URL}}
 NEXT_PUBLIC_NETWORK={{NETWORK}}
 
-## Wallet Configuration (comma-separated: freighter,albedo,lobstr,xbull,hana)
-## NEXT_PUBLIC_WALLETS=freighter,albedo,lobstr
+# Wallets are selected with --wallets at scaffold time; this is only a hint.
+# NEXT_PUBLIC_WALLETS=freighter,albedo,lobstr
 
-## Soroban Contract IDs (add after deploying contracts)
+# Optional contract ID for custom contract components.
 ## NEXT_PUBLIC_CONTRACT_ID=
 
-## App Metadata
+# App metadata
 NEXT_PUBLIC_APP_NAME={{APP_NAME}}
 ```
+
+The default template's `.env.example` also includes commented WalletConnect settings. See [WalletConnect variables](#walletconnect-variables) for when they are used.
 
 When `--with-contracts` is used, the CLI appends:
 
@@ -281,7 +315,7 @@ NEXT_PUBLIC_APP_NAME=my-stellar-app
 ```bash
 ## .env.production
 NEXT_PUBLIC_HORIZON_URL=https://horizon.stellar.org
-NEXT_PUBLIC_SOROBAN_URL=https://soroban-rpc.stellar.org
+NEXT_PUBLIC_SOROBAN_URL=https://soroban.stellar.org
 NEXT_PUBLIC_NETWORK=PUBLIC
 NEXT_PUBLIC_APP_NAME=my-stellar-app
 ```

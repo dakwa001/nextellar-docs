@@ -131,6 +131,69 @@ console.log('Transaction status:', result.status);
 
 > **Warning**: Never use in production. For testing only.
 
+## Examples
+
+### Typed Arguments and Return Decoding
+
+`callFunction` accepts `{ value, type }` arguments when JavaScript inference is not precise enough. This component assumes a deployed SEP-41 token contract with `balance(id: Address) -> i128`: it encodes the account as a Soroban address and receives the decoded balance as a JavaScript `bigint`.
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import { useSorobanContract } from '@/hooks/useSorobanContract';
+
+export default function TokenBalance({
+  contractId,
+  account,
+}: {
+  contractId: string;
+  account: string;
+}) {
+  const { callFunction, loading, error } = useSorobanContract({
+    contractId,
+    network: 'TESTNET',
+  });
+  const [balance, setBalance] = useState<bigint | null>(null);
+  const [callError, setCallError] = useState('');
+
+  const readBalance = async () => {
+    setCallError('');
+    setBalance(null);
+
+    try {
+      const result = await callFunction('balance', [
+        { value: account, type: 'address' },
+      ]);
+      if (typeof result !== 'bigint') {
+        throw new Error('Expected the contract to return an i128 balance.');
+      }
+      setBalance(result);
+    } catch (caught) {
+      setCallError(
+        caught instanceof Error ? caught.message : 'Contract call failed.'
+      );
+    }
+  };
+
+  return (
+    <section>
+      <button type="button" onClick={readBalance} disabled={loading}>
+        {loading ? 'Reading balance...' : 'Read token balance'}
+      </button>
+      {(callError || error) && (
+        <p role="alert">{callError || error?.message}</p>
+      )}
+      {balance !== null && (
+        <p>Balance in token base units: {balance.toString()}</p>
+      )}
+    </section>
+  );
+}
+```
+
+For contracts that use another argument or return type, set the corresponding type hint (for example, `{ value: amount, type: 'u128' }`). The hook decodes Soroban integer return values such as `i128` and `u128` to `bigint`.
+
 ## Advanced Examples
 
 ### Complex Contract Calls
@@ -238,7 +301,7 @@ if (typeof result !== 'number') {
 
 ## Related Hooks
 
-- [`useSorobanEvents`](/docs/hooks/use-soroban-events) - Listen to contract events
+- [`useSorobanEvents`](/docs/hooks/use-soroban-events) - Listen to contract events and handle [reconnect/backoff](/docs/hooks/use-soroban-events#reconnect-and-backoff)
 - [`useStellarWallet`](/docs/hooks/use-stellar-wallet) - Sign contract invocations
 
 ## Next Steps
